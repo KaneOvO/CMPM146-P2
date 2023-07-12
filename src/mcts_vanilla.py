@@ -1,7 +1,7 @@
 
 from mcts_node import MCTSNode
 from random import choice
-from math import sqrt, log
+from math import sqrt, log, inf
 
 num_nodes = 1000
 explore_faction = 2.
@@ -30,20 +30,22 @@ def traverse_nodes(node, board, state, identity):
     # Hint: return leaf_node
 
     currentNode = node
-    bestUCT = -999999
-    bestNode = None
-    bestAction = None
     newState = state
-    identityJudge = identity == board.current_player(state)
+    
 
-    #while the current node still has actions that have not been performed, jump out of the loop
-    while len(currentNode.untried_actions) < 1 and board.is_ended(state) == False:
+    #If the current node has untried actions and the game does not end
+    if len(currentNode.untried_actions) < 1 and board.is_ended(newState) == False:
+        
+        bestUCT = -999999
+        bestNode = None
+        bestAction = None
         #Iterate over all child nodes
         for child in currentNode.child_nodes.keys():
-            if(currentNode.child_nodes[child].visits == 0):
+            #If the current node is not visited or has an untried action
+            if(currentNode.child_nodes[child].visits == 0 or len(currentNode.untried_actions) > 0):
                 return currentNode.child_nodes[child], board.next_state(state, child)
 
-            childUCT = UCT(currentNode.child_nodes[child], identityJudge)
+            childUCT = UCT(currentNode.child_nodes[child], identity == board.current_player(state))
             
             #Update the current best node and uct
             if childUCT > bestUCT:
@@ -54,11 +56,12 @@ def traverse_nodes(node, board, state, identity):
         # Set the current best node as the starting point for the next round of the loop
         currentNode = bestNode
         newState = board.next_state(state, bestAction)
+        #Recursively continue the search
+        return traverse_nodes(currentNode, board, newState, identity)
+        
 
-
+    
     return currentNode, newState 
-
-
 
         
 
@@ -76,7 +79,7 @@ def expand_leaf(node, board, state):
     #pass
     # Hint: return new_node
 
-    #Expand only if child nodes have been visited
+    #Expand only if child nodes has untried actions
     if len(node.untried_actions) > 0:
         #The action taken from the parent node that transitions the state to this node.
         parentAction = node.untried_actions.pop()
@@ -126,8 +129,8 @@ def backpropagate(node, won):
 
     """
     #pass
-
     #Update the number of visits and wins for the current node
+    
     node.visits += 1
     node.wins += won
 
@@ -165,10 +168,6 @@ def think(board, state):
         winValue = board.points_values(newState)
 
         backpropagate(newLeaf, winValue[identity_of_bot])
-        
-        #It's not done yet.
-        #https://www.youtube.com/watch?v=UXW2yZndl7U 
-        #The current implementation is based on this video
             
     # Return an action, typically the most frequently used action (from the root) or the action with the best
     # estimated win rate.
