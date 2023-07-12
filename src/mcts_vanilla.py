@@ -6,9 +6,13 @@ from math import sqrt, log
 num_nodes = 1000
 explore_faction = 2.
 
-def UCT(node):
-    UCTvalue =  node.wins/node.visits + explore_faction * (sqrt(log(node.parent.visits) / node.visits))
-    return UCTvalue
+def UCT(node,identityJudge):
+    if identityJudge:
+        UCTvalue =  node.wins / node.visits + explore_faction * (sqrt(log(node.parent.visits) / node.visits))
+        return UCTvalue
+    else:
+        UCTvalue =  (1 - node.wins / node.visits) + explore_faction * (sqrt(log(node.parent.visits) / node.visits))
+        return UCTvalue
 
 def traverse_nodes(node, board, state, identity):
     """ Traverses the tree until the end criterion are met.
@@ -22,32 +26,41 @@ def traverse_nodes(node, board, state, identity):
     Returns:        A node from which the next stage of the search can proceed.
 
     """
-    #paaa
+    #pass
     # Hint: return leaf_node
 
     currentNode = node#visit might be added in traverse node?? acording to section
     bestUCT = -999999
     bestNode = None
-    #If the current node still has actions that have not been performed, jump out of the loop
-    while len(currentNode.untried_actions) == 0:#this while loop will end up being an infinate loop becasue the untried actions will never end up being ) because we are not calling expand leaf o any other funtion
+    bestAction = None
+    newState = state
+    identityJudge = identity == board.current_player(state)
+
+    #while the current node still has actions that have not been performed, jump out of the loop
+    while len(currentNode.untried_actions) == 0:
+        #checks if nodes are 0
+        if len(currentNode.child_nodes)==0: 
         #Iterate over all child nodes
-        for childNode in currentNode.child_nodes.values():
-            #If the child node is not visited, meaning that the divisor is 0,uct is infinite, return it directly
-            if(childNode.visits == 0):
-                return childNode
-            
-            #Calculate uct
-            childUCT = UCT(childNode)
-            
-            #Update the current best node and uct
+            return currentNode, board.next_state(state, current_node)
+        for child in currentNode.child_nodes.keys():
+            childUCT = UCT(currentNode.child_nodes[child], identityJudge)
+
+        #print(childUTC)
+
+        #Update the current best node and uct
             if childUCT > bestUCT:
                 bestUCT = childUCT
-                bestNode = childNode
-        ## Set the current best node as the starting point for the next round of the loop
-        currentNode = bestNode
+                bestAction = child
+                bestNode = currentNode.child_nodes[child]
 
-    return currentNode      
-    
+        # Set the current best node as the starting point for the next round of the loop
+        currentNode = bestNode
+        newState = board.next_state(state, bestAction)
+
+
+    return currentNode, newState 
+
+
 
         
 
@@ -66,7 +79,7 @@ def expand_leaf(node, board, state):
     # Hint: return new_node
 
     #Expand only if child nodes have been visited
-    if node.visits != 0:
+    if len(node.untried_actions) > 0:
         #The action taken from the parent node that transitions the state to this node.
         parentAction = node.untried_actions.pop()
         #New state after action
@@ -79,10 +92,10 @@ def expand_leaf(node, board, state):
         #set as a child node
         node.child_nodes[parentAction] = newNode
 
-        return newNode
+        return newNode, nextState
     
-    return node
-    
+    return node, state
+
 
 def rollout(board, state):
     """ Given the state of the game, the rollout plays out the remainder randomly.
@@ -101,8 +114,8 @@ def rollout(board, state):
         #Update state
         state = board.next_state(state, randomAction)
     
-    #
-    return board.points_values(state)
+    
+    return state
 
 
 
@@ -122,7 +135,7 @@ def backpropagate(node, won):
 
     #Recursively update the parent node if it exists
     if node.parent:
-        backpropagate(node.parent, node.parent.wins)
+        backpropagate(node.parent, won)
 
 def think(board, state):
     """ Performs MCTS by sampling games and calling the appropriate functions to construct the game tree.
@@ -134,7 +147,7 @@ def think(board, state):
     Returns:    The action to be taken.
 
     """
-    given state of the way it look at every posible action 
+    #given state of the way it look at every posible action 
     identity_of_bot = board.current_player(state)
     root_node = MCTSNode(parent=None, parent_action=None, action_list=board.legal_actions(state))
 
@@ -145,36 +158,36 @@ def think(board, state):
         # Start at root
 
         node = root_node
-        #win rate= 1- oponent win rate
-        #best opponent action node
-        opBest=traverse_nodes(oponent,board,sampled_game)
-        #players best action nodep
-        playerBest=traverse_nodes(node,board,sampled_game)
-
-        #checks if the opponetns win rate for that piece is better than the opponets and goes with the hgiher win rate for the player
-        if UCT(opBest)< UCT(playerBest):
-           return backprapagate(playerBest, playerBest.wins)
-
-
-        #calculate win rate 
-        #your win rate is 1- oponent win rate
-        #reapeat calculating opponents win rate and your until you get to some leaf node which will then the game has ended be no nodes left or you dont want to continue
-        #then get value of that state and backpropagate it to parents
-        #so that root node knows what action is gonna be next.
 
 
 
         # Do MCTS - This is all you!
+        leafNode, newState = traverse_nodes(node, board, sampled_game, identity_of_bot)
 
+        newLeaf, newState = expand_leaf(leafNode, board, newState)
 
-        leaf_node = traverse_nodes(node, board, sampled_game, identity_of_bot)
+        newState = rollout(board, newState)
 
+        winValue = board.points_values(newState)
+
+        backpropagate(newLeaf, winValue[identity_of_bot])
+        
         #It's not done yet.
         #https://www.youtube.com/watch?v=UXW2yZndl7U 
         #The current implementation is based on this video
             
     # Return an action, typically the most frequently used action (from the root) or the action with the best
     # estimated win rate.
+
+    action = None
+    bestRate = -999999
+    for child in node.child_nodes.keys():
+        currRate = node.child_nodes[child].wins / node.child_nodes[child].visits
+        
+        if currRate > bestRate:
+            
+            bestRate = currRate
+            action = child
     
     
-    return N
+    return action
