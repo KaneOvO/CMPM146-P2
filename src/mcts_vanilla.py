@@ -40,6 +40,7 @@ def traverse_nodes(node, board, state, identity):
         bestNode = None
         bestAction = None
         #Iterate over all child nodes
+            return currentNode, board.next_state(state, current_node)
         for child in currentNode.child_nodes.keys():
             #If the current node is not visited or has an untried action
             if(currentNode.child_nodes[child].visits == 0 or len(currentNode.untried_actions) > 0):
@@ -148,6 +149,7 @@ def think(board, state):
     Returns:    The action to be taken.
 
     """
+    #given state of the way it look at every posible action 
     identity_of_bot = board.current_player(state)
     root_node = MCTSNode(parent=None, parent_action=None, action_list=board.legal_actions(state))
 
@@ -156,7 +158,10 @@ def think(board, state):
         sampled_game = state
 
         # Start at root
+
         node = root_node
+
+
 
         # Do MCTS - This is all you!
         leafNode, newState = traverse_nodes(node, board, sampled_game, identity_of_bot)
