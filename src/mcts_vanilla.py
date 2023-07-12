@@ -25,11 +25,11 @@ def traverse_nodes(node, board, state, identity):
     #paaa
     # Hint: return leaf_node
 
-    currentNode = node
+    currentNode = node#visit might be added in traverse node?? acording to section
     bestUCT = -999999
     bestNode = None
     #If the current node still has actions that have not been performed, jump out of the loop
-    while len(currentNode.untried_actions) == 0:
+    while len(currentNode.untried_actions) == 0:#this while loop will end up being an infinate loop becasue the untried actions will never end up being ) because we are not calling expand leaf o any other funtion
         #Iterate over all child nodes
         for childNode in currentNode.child_nodes.values():
             #If the child node is not visited, meaning that the divisor is 0,uct is infinite, return it directly
@@ -134,6 +134,7 @@ def think(board, state):
     Returns:    The action to be taken.
 
     """
+    given state of the way it look at every posible action 
     identity_of_bot = board.current_player(state)
     root_node = MCTSNode(parent=None, parent_action=None, action_list=board.legal_actions(state))
 
@@ -142,9 +143,30 @@ def think(board, state):
         sampled_game = state
 
         # Start at root
+
         node = root_node
+        #win rate= 1- oponent win rate
+        #best opponent action node
+        opBest=traverse_nodes(oponent,board,sampled_game)
+        #players best action nodep
+        playerBest=traverse_nodes(node,board,sampled_game)
+
+        #checks if the opponetns win rate for that piece is better than the opponets and goes with the hgiher win rate for the player
+        if UCT(opBest)< UCT(playerBest):
+           return backprapagate(playerBest, playerBest.wins)
+
+
+        #calculate win rate 
+        #your win rate is 1- oponent win rate
+        #reapeat calculating opponents win rate and your until you get to some leaf node which will then the game has ended be no nodes left or you dont want to continue
+        #then get value of that state and backpropagate it to parents
+        #so that root node knows what action is gonna be next.
+
+
 
         # Do MCTS - This is all you!
+
+
         leaf_node = traverse_nodes(node, board, sampled_game, identity_of_bot)
 
         #It's not done yet.
@@ -155,4 +177,4 @@ def think(board, state):
     # estimated win rate.
     
     
-    return None
+    return N
